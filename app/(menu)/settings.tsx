@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     SafeAreaView,
@@ -11,14 +11,37 @@ import {
 } from 'react-native';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
+import { auth } from '@/config/firebase'; // Import the Firebase auth instance
 
 export default function Example() {
     const [form, setForm] = useState({
         emailNotifications: true,
         pushNotifications: false,
     });
+    const [user, setUser] = useState(null);
     const navigation = useNavigation();
 
+    // Handle sign-out
+    const handleSignOut = () => {
+        auth.signOut()
+            .then(() => {
+                setUser(null);
+                navigation.navigate('(menu)/SignIn'); // Ensure you have a SignIn screen
+            })
+            .catch(error => {
+                console.error("Error signing out: ", error);
+            });
+    };
+
+    // Handle user authentication status
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged(setUser);
+        return () => unsubscribe();
+    }, []);
+
+    const handleProfilePress = () => {
+        navigation.navigate('(menu)/SignUp'); // 'SignIn' ekranına yönlendir
+    };
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FBF9F4' }}>
             {/* Fixed Header */}
@@ -38,29 +61,28 @@ export default function Example() {
                     <Text style={styles.sectionTitle}>Account</Text>
 
                     <View style={styles.sectionBody}>
-                        <TouchableOpacity
-                            onPress={() => {
-                                // handle onPress
-                            }}
-                            style={styles.profile}>
-                            <Image
-                                alt=""
-                                source={{
-                                    uri: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=facearea&facepad=2.5&w=256&h=256&q=80',
-                                }}
-                                style={styles.profileAvatar} />
+                        {user ? (
+                            <TouchableOpacity
+                                onPress={handleProfilePress}
+                                style={styles.profile}>
+                                <Image
+                                    source={{ uri: user.photoURL || 'https://example.com/default-avatar.png' }}
+                                    style={styles.profileAvatar} />
 
-                            <View style={styles.profileBody}>
-                                <Text style={styles.profileName}>John Doe</Text>
+                                <View style={styles.profileBody}>
+                                    <Text style={styles.profileName}>{user.displayName || 'John Doe'}</Text>
+                                    <Text style={styles.profileHandle}>{user.email || 'john@example.com'}</Text>
+                                </View>
 
-                                <Text style={styles.profileHandle}>john@example.com</Text>
-                            </View>
+                                <FeatherIcon
+                                    color="#bcbcbc"
+                                    name="chevron-right"
+                                    size={22} />
+                            </TouchableOpacity>
+                        ) : (
+                            <Text style={styles.profileName}          onPress={handleProfilePress}>Not Signed In</Text>
 
-                            <FeatherIcon
-                                color="#bcbcbc"
-                                name="chevron-right"
-                                size={22} />
-                        </TouchableOpacity>
+                        )}
                     </View>
                 </View>
 
@@ -89,9 +111,6 @@ export default function Example() {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Location Option */}
-
-
                         {/* Email Notifications Option */}
                         <View style={styles.rowWrapper}>
                             <View style={styles.row}>
@@ -103,7 +122,7 @@ export default function Example() {
                                     onValueChange={emailNotifications =>
                                         setForm({ ...form, emailNotifications })
                                     }
-                                    style={{transform: [{ scaleX: 0.95 }, { scaleY: 0.95 }] }}
+                                    style={{ transform: [{ scaleX: 0.95 }, { scaleY: 0.95 }] }}
                                     value={form.emailNotifications} />
                             </View>
                         </View>
@@ -206,27 +225,27 @@ export default function Example() {
                 </View>
 
                 {/* Log Out Option */}
-                <View style={styles.section}>
-                    <View style={styles.sectionBody}>
-                        <View
-                            style={[
-                                styles.rowWrapper,
-                                styles.rowFirst,
-                                styles.rowLast,
-                                { alignItems: 'center' },
-                            ]}>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    // handle onPress
-                                }}
-                                style={styles.row}>
-                                <Text style={[styles.rowLabel, styles.rowLabelLogout]}>
-                                    Log Out
-                                </Text>
-                            </TouchableOpacity>
+                {user && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionBody}>
+                            <View
+                                style={[
+                                    styles.rowWrapper,
+                                    styles.rowFirst,
+                                    styles.rowLast,
+                                    { alignItems: 'center' },
+                                ]}>
+                                <TouchableOpacity
+                                    onPress={handleSignOut}
+                                    style={styles.row}>
+                                    <Text style={[styles.rowLabel, styles.rowLabelLogout]}>
+                                        Log Out
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
+                )}
 
                 {/* Footer */}
                 <Text style={styles.contentFooter}>App Version 2.24 #50491</Text>
@@ -282,88 +301,68 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
     },
     sectionBody: {
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.2,
-        shadowRadius: 1.41,
-        elevation: 2,
-    },
-    profile: {
-        padding: 12,
         backgroundColor: '#fff',
-        borderRadius: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-    },
-    profileAvatar: {
-        width: 60,
-        height: 60,
-        borderRadius: 9999,
-        marginRight: 12,
-    },
-    profileBody: {
-        marginRight: 'auto',
-    },
-    profileName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#481E30',
-    },
-    profileHandle: {
-        marginTop: 2,
-        fontSize: 16,
-        fontWeight: '400',
-        color: '#858585',
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 0 },
+        shadowRadius: 4,
+        shadowOpacity: 0.1,
+        elevation: 1,
     },
     /** Row */
-    row: {
-        height: 44,
-        width: '100%',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        paddingRight: 12,
-
-    },
     rowWrapper: {
-        paddingLeft: 16,
-        backgroundColor: '#fff',
-        borderTopWidth: 1,
-        borderColor: '#f0f0f0',
+        marginBottom: 12,
     },
     rowFirst: {
-        borderTopLeftRadius: 12,
-        borderTopRightRadius: 12,
+        marginTop: 0,
+    },
+    rowLast: {
+        marginBottom: 0,
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
     rowLabel: {
-        fontSize: 16,
-        letterSpacing: 0.24,
+        fontSize: 15,
+        fontWeight: '500',
         color: '#481E30',
     },
+    rowLabelLogout: {
+        color: '#F6C6C6',
+    },
     rowSpacer: {
-        flexGrow: 1,
-        flexShrink: 1,
-        flexBasis: 0,
+        flex: 1,
     },
     rowValue: {
+        fontSize: 14,
+        color: '#6c6c6c',
+    },
+    /** Profile */
+    profile: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    profileAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#ddd',
+    },
+    profileBody: {
+        flex: 1,
+        marginLeft: 12,
+    },
+    profileName: {
         fontSize: 16,
         fontWeight: '500',
         color: '#481E30',
-        marginRight: 4,
     },
-    rowLast: {
-        borderBottomLeftRadius: 12,
-        borderBottomRightRadius: 12,
-    },
-    rowLabelLogout: {
-        width: '100%',
-        textAlign: 'center',
-        fontWeight: '600',
-        color: '#481E30',
+    profileHandle: {
+        fontSize: 14,
+        color: '#a69f9f',
     },
 });

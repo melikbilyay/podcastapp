@@ -5,7 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
-
+import SignUp from "@/app/(menu)/SignUp";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -32,6 +32,8 @@ export default function RootLayout() {
 
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="(menu)/settings" options={{ headerShown: false }} />
+          <Stack.Screen name="(menu)/SignIn" options={{ headerShown: false }} />
+          <Stack.Screen name="(menu)/SignUp" options={{ headerShown: false }} />
           </Stack>
 
       </ThemeProvider>
