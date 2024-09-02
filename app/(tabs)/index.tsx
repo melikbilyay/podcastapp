@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Image, Dimensions, FlatList, TouchableOpacity } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { ThemedText } from '@/components/ThemedText';
@@ -6,61 +6,85 @@ import { ThemedView } from '@/components/ThemedView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import {NativeStackNavigationProp} from "@react-navigation/native-stack";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from "@/config/firebase";
 
 const { width } = Dimensions.get('window');
+
+// Default image URL for podcasts without images
+const defaultImage = require('@/assets/images/icon.png');
 
 interface CarouselItemType {
     id: string;
     title: string;
-    image: any; // Consider replacing `any` with a more specific type like `ImageSourcePropType` if needed
+    image: any; // Use ImageSourcePropType if needed
 }
 
 interface PodcastCardType {
     id: string;
     title: string;
-    image: any; // Same as above
+    image: any; // Use ImageSourcePropType if needed
 }
-
-
-const carouselData = [
-    { id: '1', title: 'Podcast 1', image: require('@/assets/images/icon.png') },
-    { id: '2', title: 'Podcast 2', image: require('@/assets/images/icon.png') },
-    { id: '3', title: 'Podcast 3', image: require('@/assets/images/icon.png') },
-];
-
-const podcastData = [
-    { id: '4', title: 'New Podcast 1', image: require('@/assets/images/icon.png') },
-    { id: '5', title: 'New Podcast 2', image: require('@/assets/images/icon.png') },
-    { id: '6', title: 'New Podcast 3', image: require('@/assets/images/icon.png') },
-];
-
-const recommendedData = [
-    { id: '7', title: 'Recommended Podcast 1', image: require('@/assets/images/icon.png') },
-    { id: '8', title: 'Recommended Podcast 2', image: require('@/assets/images/icon.png') },
-    { id: '9', title: 'Recommended Podcast 3', image: require('@/assets/images/icon.png') },
-];
 
 const CarouselItem: React.FC<{ item: CarouselItemType }> = ({ item }) => (
     <View style={styles.sliderItem}>
-        <Image source={item.image} style={styles.sliderImage} />
-        <ThemedText style={styles.sliderText}>{item.title}</ThemedText>
+        <Image
+            source={{ uri: item.image }} // Ensure this is a valid image URL
+            style={styles.sliderImage}
+            resizeMode="cover"
+        />
+        <ThemedText style={styles.sliderText}>{item.id}</ThemedText>
     </View>
 );
 
 const PodcastCard: React.FC<{ item: PodcastCardType }> = ({ item }) => (
     <View style={styles.card}>
-        <Image source={item.image} style={styles.cardImage} />
-        <ThemedText style={styles.cardTitle}>{item.title}</ThemedText>
+        <Image
+            source={{ uri: item.image || defaultImage }} // Ensure this is a valid image URL
+            style={styles.cardImage}
+            resizeMode="cover"
+        />
+        <ThemedText style={styles.cardTitle}>{item.id}</ThemedText>
     </View>
 );
+
 export type RootStackParamList = {
     Home: undefined;
     Settings: undefined;
     '(menu)/settings': undefined;
 };
+
 export default function HomeScreen() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const [podcastData, setPodcastData] = useState<PodcastCardType[]>([]);
+
+    useEffect(() => {
+        const fetchPodcasts = async () => {
+            try {
+                const snapshot = await getDocs(collection(db, 'educationResources'));
+                const podcasts = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: data.id,
+                        title: data.category, // Use this as title or adjust as needed
+                        image: data.coverImageUrl || defaultImage, // Use coverImageUrl
+                    } as PodcastCardType;
+                });
+
+                console.log('Fetched podcasts:', podcasts); // Debugging: Check fetched data
+
+                // Ensure podcasts is not empty before setting state
+                if (podcasts.length > 0) {
+                    setPodcastData(podcasts);
+                }
+            } catch (error) {
+                console.error("Error fetching podcasts:", error);
+            }
+        };
+
+        fetchPodcasts();
+    }, []);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -77,7 +101,7 @@ export default function HomeScreen() {
                     width={width}
                     height={200}
                     autoPlay
-                    data={carouselData}
+                    data={podcastData}
                     renderItem={({ item }) => <CarouselItem item={item} />}
                     scrollAnimationDuration={1000}
                 />
@@ -90,7 +114,8 @@ export default function HomeScreen() {
                         keyExtractor={(item) => item.id}
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.cardListContainer} // Add padding here
+                        contentContainerStyle={styles.cardListContainer}
+                        ListEmptyComponent={<ThemedText>No podcasts available</ThemedText>} // For empty state
                     />
                 </ThemedView>
 
@@ -99,12 +124,13 @@ export default function HomeScreen() {
                 <ThemedView style={styles.sectionContainer}>
                     <ThemedText type="subtitle">Önerilen Podcastler</ThemedText>
                     <FlatList
-                        data={recommendedData}
+                        data={podcastData}
                         renderItem={({ item }) => <PodcastCard item={item} />}
                         keyExtractor={(item) => item.id}
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.cardListContainer} // Add padding here
+                        contentContainerStyle={styles.cardListContainer}
+                        ListEmptyComponent={<ThemedText>No recommended podcasts available</ThemedText>} // For empty state
                     />
                 </ThemedView>
             </ThemedView>
@@ -132,7 +158,6 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '80%',
         borderRadius: 8,
-        marginRight: 55,
     },
     sliderText: {
         marginTop: 10,
@@ -177,6 +202,6 @@ const styles = StyleSheet.create({
         marginVertical: 20,
     },
     cardListContainer: {
-        paddingVertical: 10, // Adjust this value to add space between the title and cards
+        paddingVertical: 10,
     },
 });

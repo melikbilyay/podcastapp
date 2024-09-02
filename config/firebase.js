@@ -1,18 +1,23 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-
-// Firebase configuration
+import { getStorage } from 'firebase/storage';
+import { getFirestore } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const firebaseConfig = {
-    apiKey: "AIzaSyCLd7X72OpxeX8AQyfbgC8d25sIHws0s8k",
-    authDomain: "podcastapp-2e521.firebaseapp.com",
-    projectId: "podcastapp-2e521",
-    storageBucket: "podcastapp-2e521.appspot.com",
-    messagingSenderId: "444891502936",
-    appId: "1:444891502936:web:9168e3f8459eca4dfeed2d",
-    measurementId: "G-1G8JFE2240"
+    apiKey: "AIzaSyBfGEiaYewpyhIpssT79-vm2ILZMavq274",
+    authDomain: "pod2-7cde2.firebaseapp.com",
+    projectId: "pod2-7cde2",
+    storageBucket: "pod2-7cde2.appspot.com",
+    messagingSenderId: "450588673968",
+    appId: "1:450588673968:web:4553a27e61d3b035347875",
+    measurementId: "G-HT188V0VRM"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Firebase uygulaması zaten başlatılmışsa mevcut olanı kullanın, aksi halde yeni bir tane başlatın
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-export { auth };
+// Firebase servislerini başlatın
+const auth = getAuth(app);
+const storage = getStorage(app);
+const db = getFirestore(app);
+export { auth, storage, db};

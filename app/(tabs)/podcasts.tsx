@@ -1,56 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, TextInput, FlatList, TouchableOpacity, Image } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from "@/config/firebase"; // Firestore için Firebase config dosyanızda 'db' referansı olması gerekir.
+import { Audio } from 'expo-av';
 
-const podcastsData = [
-  { id: '1', title: 'Podcast 1', image: require('@/assets/images/icon.png'), category: 'İlişkiler' },
-  { id: '2', title: 'Podcast 2', image: require('@/assets/images/icon.png'), category: 'Kişisel' },
-  { id: '3', title: 'Podcast 3', image: require('@/assets/images/icon.png'), category: 'İlişkiler' },
-  { id: '4', title: 'Podcast 4', image: require('@/assets/images/icon.png'), category: 'Sağlık' },
-  { id: '5', title: 'Podcast 5', image: require('@/assets/images/icon.png'), category: 'Sağlık' },
-  // Add more podcasts here
-];
-// Define types for podcast
 type Podcast = {
   id: string;
-  title: string;
-  image: any; // Replace 'any' with the specific type if you have it, like 'number' for require statements
+  title?: string; // Title is now optional to handle missing titles
+  image: string; // Image URL from Firestore
+  url: string; // Video or audio URL
   category: string;
-
 };
 
-// Define types for navigation parameters
 type PodcastItemProps = {
   item: Podcast;
   onPress: (podcast: Podcast) => void;
-
 };
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const categories = ['Tümü', 'İlişkiler', 'Kişisel', 'Sağlık'];
 
 const PodcastItem: React.FC<PodcastItemProps> = ({ item, onPress }) => (
     <TouchableOpacity style={styles.podcastItem} onPress={() => onPress(item)}>
-      <Image source={item.image} style={styles.podcastImage} />
-      <ThemedText>{item.title}</ThemedText>
+      <Image source={{ uri: item.image }} style={styles.podcastImage} />
+      <ThemedText>{capitalize(item.id || 'No Title')}</ThemedText>
     </TouchableOpacity>
 );
 
 export default function PodcastsScreen() {
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('Tümü');
+  const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const navigation = useNavigation();
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
 
-  const filteredPodcasts = podcastsData
-      .filter(podcast =>
-          (selectedCategory === 'Tümü' || podcast.category === selectedCategory) &&
-          podcast.title.toLowerCase().includes(search.toLowerCase())
-      );
+  useEffect(() => {
+    // Firestore'dan tüm mp4 dosyalarını ve bilgileri çek
+    const fetchPodcasts = async () => {
+      try {
+        const collectionRef = collection(db, 'educationResources');
+        const querySnapshot = await getDocs(collectionRef);
 
-  const handlePress = (podcast: Podcast) => {
-    navigation.navigate('podcastDetails', { podcast });
+        if (!querySnapshot.empty) {
+          const fetchedPodcasts = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: data.id,
+              title: data.title || 'No Title', // Fallback title
+              image: data.coverImageUrl,
+              url: data.videoUrl,
+              category: data.category || 'Tümü',
+            };
+          });
+          setPodcasts(fetchedPodcasts);
+        } else {
+          console.log("No documents found!");
+        }
+      } catch (error) {
+        console.error("Error fetching documents:", error);
+      }
+    };
+
+    fetchPodcasts();
+  }, []);
+
+  const filteredPodcasts = podcasts.filter(podcast =>
+      (selectedCategory === 'Tümü' || podcast.category === selectedCategory) &&
+      podcast.title && podcast.title.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handlePress = async (podcast: Podcast) => {
+    if (sound) {
+      await sound.unloadAsync();
+      setSound(null);
+    }
+
+    const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: podcast.url },
+        { shouldPlay: true }
+    );
+    setSound(newSound);
+    navigation.navigate('PlayerScreen', { podcast });
   };
 
   const handlePlay = () => {
@@ -137,8 +172,8 @@ const styles = StyleSheet.create({
     padding: 15,
     backgroundColor: '#fff',
     borderRadius: 8,
-    elevation: 1, // Add shadow for Android
-    shadowColor: '#000', // Add shadow for iOS
+    elevation: 1,
+    shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -147,7 +182,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#967d28',
-    marginLeft: 10, // Space between icon and text
+    marginLeft: 10,
   },
   categoryContainer: {
     flexDirection: 'row',
@@ -160,8 +195,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#fff',
     margin: 4,
-    elevation: 1, // Add shadow for Android
-    shadowColor: '#000', // Add shadow for iOS
+    elevation: 1,
+    shadowColor: '#000',
     shadowOpacity: 0.3,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -182,8 +217,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     backgroundColor: '#fff',
     borderRadius: 8,
-    elevation: 1, // Add shadow for Android
-    shadowColor: '#000', // Add shadow for iOS
+    elevation: 1,
+    shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
